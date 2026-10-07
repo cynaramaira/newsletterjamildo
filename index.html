@@ -3,243 +3,327 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Central da Newsletter | Jamildo.com</title>
+  <title>Central de Disparo da Newsletter | Jamildo.com</title>
   <style>
     :root {
-      --azul: #024796;
-      --laranja: #f83d03;
-      --bg: #f4f6f9;
+      --azul-primario: #024796;
+      --azul-escuro: #013774;
+      --laranja-destaque: #f83d03;
+      --fundo: #f4f6f9;
       --texto: #222222;
+      --borda: #dee2e6;
     }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-      background-color: var(--bg);
+      background-color: var(--fundo);
       color: var(--texto);
       margin: 0;
       padding: 30px 15px;
       display: flex;
       justify-content: center;
     }
-    .card {
+
+    .painel {
       background: #ffffff;
       width: 100%;
       max-width: 680px;
       border-radius: 8px;
-      padding: 28px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+      padding: 30px;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
     }
-    .header {
-      border-bottom: 3px solid var(--azul);
-      padding-bottom: 14px;
-      margin-bottom: 20px;
+
+    .topo {
+      border-bottom: 3px solid var(--azul-primario);
+      padding-bottom: 16px;
+      margin-bottom: 24px;
     }
+
     h1 {
-      color: var(--azul);
+      color: var(--azul-primario);
       margin: 0 0 6px 0;
       font-size: 24px;
     }
-    p.sub {
-      color: #666;
+
+    p.subtitulo {
+      color: #666666;
       margin: 0;
       font-size: 14px;
     }
-    .info-box {
-      background: #eef4fc;
-      border-left: 4px solid var(--azul);
-      padding: 12px 14px;
+
+    .instrucoes {
+      background: #edf4fc;
+      border-left: 4px solid var(--azul-primario);
+      padding: 14px;
+      border-radius: 0 4px 4px 0;
       font-size: 13px;
-      margin-bottom: 20px;
-      line-height: 1.4;
+      line-height: 1.5;
+      margin-bottom: 22px;
     }
-    .opcao-modo {
-      margin-bottom: 20px;
-      display: flex;
-      gap: 15px;
+
+    .bloco-chave {
+      background-color: #fff9e6;
+      border: 1px solid #ffeeba;
+      border-radius: 6px;
+      padding: 14px;
+      margin-bottom: 22px;
     }
-    label.radio-label {
-      font-weight: 600;
-      font-size: 14px;
-      cursor: pointer;
-    }
+
     .campo {
       margin-bottom: 14px;
     }
+
     label {
       display: block;
       font-size: 13px;
-      font-weight: 600;
-      margin-bottom: 4px;
-      color: #333;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: #333333;
     }
-    input[type="text"] {
+
+    input[type="text"], input[type="password"] {
       width: 100%;
       padding: 10px 12px;
-      border: 1px solid #ced4da;
+      border: 1px solid var(--borda);
       border-radius: 4px;
       font-size: 14px;
-      box-sizing: border-box;
     }
-    input[type="text"]:focus {
+
+    input[type="text"]:focus, input[type="password"]:focus {
       outline: none;
-      border-color: var(--azul);
+      border-color: var(--azul-primario);
     }
-    .botoes {
-      margin-top: 25px;
+
+    .opcoes-modo {
       display: flex;
-      gap: 10px;
-    }
-    button {
-      flex: 1;
-      padding: 12px;
-      border: none;
-      border-radius: 4px;
-      font-weight: bold;
-      font-size: 15px;
-      cursor: pointer;
-      transition: opacity 0.2s;
-    }
-    button:hover { opacity: 0.9; }
-    button:disabled { opacity: 0.6; cursor: not-allowed; }
-    .btn-publicar {
-      background-color: var(--laranja);
-      color: white;
-    }
-    #status {
-      margin-top: 20px;
+      gap: 20px;
+      margin-bottom: 20px;
+      background: #fafafa;
       padding: 12px;
       border-radius: 4px;
-      display: none;
+      border: 1px solid var(--borda);
+    }
+
+    .radio-label {
       font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
     }
-    .sucesso { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-    .erro { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+    .botao-disparo {
+      width: 100%;
+      background-color: var(--laranja-destaque);
+      color: #ffffff;
+      padding: 14px;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 15px;
+      transition: background-color 0.2s ease;
+    }
+
+    .botao-disparo:hover {
+      background-color: #d83402;
+    }
+
+    .botao-disparo:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+
+    #alerta-status {
+      display: none;
+      padding: 14px;
+      border-radius: 4px;
+      margin-top: 20px;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .sucesso {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .erro {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
   </style>
 </head>
 <body>
 
-<div class="card">
-  <div class="header">
+<div class="painel">
+  <div class="topo">
     <h1>Central da Newsletter | Jamildo.com</h1>
-    <p class="sub">Curadoria editorial e disparo diário para a base de leitores</p>
+    <p class="subtitulo">Disparo e curadoria editorial para a base de leitores</p>
   </div>
 
-  <div class="info-box">
-    <strong>Como funciona:</strong> No modo <em>Automático</em>, o robô recolhe os dados direto do Google Analytics. No modo <em>Manual</em>, você cola 5 reportagens do site e ele extrai fotos e linhas finas por conta própria.
+  <div class="instrucoes">
+    <strong>Orientações para a redação:</strong><br>
+    &bull; <strong>Modo Automático:</strong> o robô puxa as 5 matérias mais lidas hoje no Google Analytics.<br>
+    &bull; <strong>Modo Manual:</strong> cole os links exatos de 5 reportagens do site para o disparo personalizado.
   </div>
 
-  <div class="opcao-modo">
+  <div class="bloco-chave">
+    <label for="chaveAcesso">Chave de Autorização da Redação:</label>
+    <input type="password" id="chaveAcesso" placeholder="Cole a chave fornecida pela coordenação">
+    <span style="font-size: 11px; color: #666666; display: block; margin-top: 4px;">
+      Esta chave fica salva no seu navegador após o primeiro uso.
+    </span>
+  </div>
+
+  <div class="opcoes-modo">
     <label class="radio-label">
-      <input type="radio" name="modo" value="auto" checked onchange="toggleModo()"> Automático (Top 5 GA4)
+      <input type="radio" name="modo_envio" value="auto" checked onchange="alternarModo()"> 
+      Automático (Top 5 GA4)
     </label>
     <label class="radio-label">
-      <input type="radio" name="modo" value="manual" onchange="toggleModo()"> Manual (Colar Links)
+      <input type="radio" name="modo_envio" value="manual" onchange="alternarModo()"> 
+      Manual (Colar 5 links)
     </label>
   </div>
 
-  <div id="links-container" style="display: none;">
+  <div id="secao-links-manuais" style="display: none;">
     <div class="campo">
-      <label>1. Matéria de Capa (Destaque Principal)</label>
-      <input type="text" id="link1" placeholder="https://jamildo.com/politica/...">
+      <label>1. Matéria de Capa (Destaque Principal):</label>
+      <input type="text" id="materia1" placeholder="https://jamildo.com/politica/...">
     </div>
     <div class="campo">
-      <label>2. Segundo Destaque</label>
-      <input type="text" id="link2" placeholder="https://jamildo.com/...">
+      <label>2. Segundo Destaque:</label>
+      <input type="text" id="materia2" placeholder="https://jamildo.com/...">
     </div>
     <div class="campo">
-      <label>3. Terceiro Destaque</label>
-      <input type="text" id="link3" placeholder="https://jamildo.com/...">
+      <label>3. Terceiro Destaque:</label>
+      <input type="text" id="materia3" placeholder="https://jamildo.com/...">
     </div>
     <div class="campo">
-      <label>4. Quarto Destaque</label>
-      <input type="text" id="link4" placeholder="https://jamildo.com/...">
+      <label>4. Quarto Destaque:</label>
+      <input type="text" id="materia4" placeholder="https://jamildo.com/...">
     </div>
     <div class="campo">
-      <label>5. Quinto Destaque</label>
-      <input type="text" id="link5" placeholder="https://jamildo.com/...">
+      <label>5. Quinto Destaque:</label>
+      <input type="text" id="materia5" placeholder="https://jamildo.com/...">
     </div>
   </div>
 
-  <div class="botoes">
-    <button class="btn-publicar" id="btnDisparo" onclick="dispararNewsletter()">
-      🚀 Disparar Newsletter Agora
-    </button>
-  </div>
+  <button class="botao-disparo" id="btnDisparar" onclick="executarDisparo()">
+    Disparar Newsletter Agora
+  </button>
 
-  <div id="status"></div>
+  <div id="alerta-status"></div>
 </div>
 
 <script>
-  // CONFIGURAÇÕES DO GITHUB (Ajuste com os seus dados)
-  const GITHUB_USER = "cynaramaira"; 
-  const GITHUB_REPO = "newsletter"; 
-  const WORKFLOW_FILE = "newsletter.yml"; 
-  
-  // Token pessoal de acesso com permissão de "workflow"
-  // DICA: Você pode criar um Fine-grained Personal Access Token no GitHub só para disparar essa Action
-  const GITHUB_TOKEN = "SEU_GITHUB_PAT_AQUI";
+  // CONFIGURAÇÕES DO REPOSITÓRIO NO GITHUB
+  // Substitua pelos dados da sua conta e do repositório
+  const CONFIG_GITHUB = {
+    usuario: "cynaramaira",
+    repositorio: "newsletter",
+    arquivoWorkflow: "newsletter.yml",
+    branch: "main"
+  };
 
-  function toggleModo() {
-    const isManual = document.querySelector('input[name="modo"]:checked').value === 'manual';
-    document.getElementById('links-container').style.display = isManual ? 'block' : 'none';
+  // Ao abrir a página, recupera a chave salva anteriormente
+  window.addEventListener("DOMContentLoaded", () => {
+    const chaveSalva = localStorage.getItem("jamildo_newsletter_token");
+    if (chaveSalva) {
+      document.getElementById("chaveAcesso").value = chaveSalva;
+    }
+  });
+
+  function alternarModo() {
+    const modoManual = document.querySelector('input[name="modo_envio"]:checked').value === "manual";
+    document.getElementById("secao-links-manuais").style.display = modoManual ? "block" : "none";
   }
 
-  async function dispararNewsletter() {
-    const modo = document.querySelector('input[name="modo"]:checked').value;
-    const statusDiv = document.getElementById('status');
-    const btn = document.getElementById('btnDisparo');
+  async function executarDisparo() {
+    const campoChave = document.getElementById("chaveAcesso");
+    const token = campoChave.value.trim();
+    const painelStatus = document.getElementById("alerta-status");
+    const botao = document.getElementById("btnDisparar");
+    const modo = document.querySelector('input[name="modo_envio"]:checked').value;
 
-    let inputsData = { modo: modo };
-
-    if (modo === 'manual') {
-      const l1 = document.getElementById('link1').value.trim();
-      const l2 = document.getElementById('link2').value.trim();
-      const l3 = document.getElementById('link3').value.trim();
-      const l4 = document.getElementById('link4').value.trim();
-      const l5 = document.getElementById('link5').value.trim();
-
-      if (!l1 || !l2 || !l3 || !l4 || !l5) {
-        statusDiv.className = 'erro';
-        statusDiv.style.display = 'block';
-        statusDiv.innerHTML = 'Preencha os 5 links para enviar a edição manual.';
-        return;
-      }
-      inputsData.links = `${l1},${l2},${l3},${l4},${l5}`;
+    if (!token) {
+      exibirMensagem("Informe a Chave de Autorização da Redação antes de enviar.", "erro");
+      return;
     }
 
-    btn.disabled = true;
-    btn.innerText = "Enviando comando para o robô...";
-    statusDiv.style.display = 'none';
+    // Salva a chave no navegador para as próximas edições
+    localStorage.setItem("jamildo_newsletter_token", token);
+
+    let linksColetados = "";
+
+    if (modo === "manual") {
+      const links = [
+        document.getElementById("materia1").value.trim(),
+        document.getElementById("materia2").value.trim(),
+        document.getElementById("materia3").value.trim(),
+        document.getElementById("materia4").value.trim(),
+        document.getElementById("materia5").value.trim()
+      ];
+
+      const todosPreenchidos = links.every(url => url.length > 10);
+      if (!todosPreenchidos) {
+        exibirMensagem("Preencha os 5 links de matérias para autorizar o envio manual.", "erro");
+        return;
+      }
+
+      linksColetados = links.join(",");
+    }
+
+    botao.disabled = true;
+    botao.innerText = "Enviando comando para o servidor...";
+    painelStatus.style.display = "none";
 
     try {
-      const response = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/actions/workflows/${WORKFLOW_FILE}/dispatches`, {
+      const endpoint = `https://api.github.com/repos/${CONFIG_GITHUB.usuario}/${CONFIG_GITHUB.repositorio}/actions/workflows/${CONFIG_GITHUB.arquivoWorkflow}/dispatches`;
+
+      const resposta = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Accept": "application/vnd.github.v3+json",
-          "Authorization": `token ${GITHUB_TOKEN}`,
+          "Authorization": `token ${token}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          ref: "main",
-          inputs: inputsData
+          ref: CONFIG_GITHUB.branch,
+          inputs: {
+            modo: modo,
+            links: linksColetados
+          }
         })
       });
 
-      if (response.status === 204) {
-        statusDiv.className = 'sucesso';
-        statusDiv.style.display = 'block';
-        statusDiv.innerHTML = '<strong>Ordem enviada com sucesso!</strong> O robô já iniciou o processo de raspagem e os e-mails estão sendo disparados agora.';
+      if (resposta.status === 204) {
+        exibirMensagem("Comando aceito com sucesso. O GitHub Actions iniciou o processo de raspagem e envio aos inscritos.", "sucesso");
+      } else if (resposta.status === 401 || resposta.status === 403) {
+        exibirMensagem("Chave de autorização inválida ou sem permissão para executar a rotina.", "erro");
       } else {
-        const errData = await response.json();
-        throw new Error(errData.message || "Falha na requisição");
+        const dadosErro = await resposta.json().catch(() => ({}));
+        exibirMensagem(`Falha no acionamento: ${dadosErro.message || "Erro desconhecido"}`, "erro");
       }
-    } catch (err) {
-      statusDiv.className = 'erro';
-      statusDiv.style.display = 'block';
-      statusDiv.innerHTML = `Erro ao acionar disparo: ${err.message}`;
+    } catch (e) {
+      exibirMensagem(`Erro de conexão com o GitHub: ${e.message}`, "erro");
     } finally {
-      btn.disabled = false;
-      btn.innerText = "🚀 Disparar Newsletter Agora";
+      botao.disabled = false;
+      botao.innerText = "Disparar Newsletter Agora";
     }
+  }
+
+  function exibirMensagem(texto, tipo) {
+    const el = document.getElementById("alerta-status");
+    el.className = tipo;
+    el.style.display = "block";
+    el.innerHTML = texto;
   }
 </script>
 </body>
