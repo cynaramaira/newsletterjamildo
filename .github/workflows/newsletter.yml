@@ -1,0 +1,40 @@
+name: Disparo Newsletter Jamildo
+
+on:
+  schedule:
+    - cron: '0 21 * * 1-5' # Roda automático às 18h de Brasília
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: 'Modo de envio (auto ou manual)'
+        required: true
+        default: 'auto'
+      links:
+        description: 'Links separados por vírgula no modo manual'
+        required: false
+        default: ''
+
+jobs:
+  enviar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install requests beautifulsoup4 google-analytics-data
+
+      - name: Restaurar credenciais
+        run: echo "${{ secrets.GA4_CREDENTIALS_JSON }}" > credenciais.json
+
+      - name: Executar script
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GA4_PROPERTY_ID: ${{ secrets.GA4_PROPERTY_ID }}
+          INPUT_MODO: ${{ github.event.inputs.modo }}
+          INPUT_LINKS: ${{ github.event.inputs.links }}
+        run: python newsletter_producao.py
