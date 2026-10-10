@@ -3,6 +3,7 @@ import smtplib
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import gspread
 import requests
 from bs4 import BeautifulSoup
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
@@ -21,12 +22,6 @@ GA4_PROPERTY_ID = os.getenv("GA4_PROPERTY_ID", "443865423")
 GMAIL_USER = os.getenv("GMAIL_USER", "jamildo.com@gmail.com")
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "")
 
-# 2. Base de leitores cadastrados
-# Pode ser expandida ou conectada a arquivo/banco
-LISTA_INSCRITOS = [
-    "jamildo.com@gmail.com",
-]
-
 HEADERS_REQUISICAO = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -34,6 +29,31 @@ HEADERS_REQUISICAO = {
         "Chrome/120.0.0.0 Safari/537.36"
     )
 }
+
+def carregar_inscritos_google_sheets(nome_planilha="Inscritos Newsletter Jamildo"):
+    """Lê a lista de e-mails da planilha privada compartilhada com a Conta de Serviço."""
+    try:
+        gc = gspread.service_account(filename="credenciais.json")
+        planilha = gc.open(nome_planilha).sheet1
+        
+        # Pega todos os valores da Coluna A (ignorando o cabeçalho 'email')
+        valores_coluna_a = planilha.col_values(1)
+        if len(valores_coluna_a) > 1:
+            emails_brutos = valores_coluna_a[1:]
+        else:
+            emails_brutos = []
+
+        # Limpa e filtra apenas e-mails válidos
+        inscritos = [e.strip() for e in emails_brutos if "@" in e and "." in e]
+        # Remove duplicados mantendo a ordem
+        inscritos_unicos = list(dict.fromkeys(inscritos))
+        
+        print(f"Base de leitores carregada: {len(inscritos_unicos)} inscrito(s) ativo(s).")
+        return inscritos_unicos
+    except Exception as e:
+        print(f"Erro ao ler inscritos no Google Sheets: {e}")
+        # Fallback de segurança para não interromper totalmente caso haja falha de conexão na planilha
+        return [GMAIL_USER]
 
 def consultar_mais_lidas_ga4():
     """Recupera os 5 artigos com maior volume de acessos hoje no GA4."""
@@ -254,7 +274,14 @@ def processar_envio():
 
     html_email = construir_estrutura_html(noticias)
 
-    print(f"Iniciando conexao SMTP e envio para {len(LISTA_INSCRITOS)} leitor(es)...")
+    # Carrega os inscritos diretamente do Google Sheets privado
+    lista_inscritos = carregar_inscritos_google_sheets()
+
+    if not lista_inscritos:
+        print("Nenhum inscrito encontrado na planilha. Abortando envio.")
+        return
+
+    print(f"Iniciando conexao SMTP e envio para {len(lista_inscritos)} leitor(es)...")
     try:
         with smtplib.SMTP("smtp.gmail.com", 587, timeout=25) as servidor:
             servidor.ehlo()
@@ -262,7 +289,7 @@ def processar_envio():
             servidor.ehlo()
             servidor.login(GMAIL_USER, GMAIL_APP_PASSWORD)
 
-            for email_leitor in LISTA_INSCRITOS:
+            for email_leitor in lista_inscritos:
                 mensagem = MIMEMultipart("alternative")
                 mensagem["Subject"] = "Giro Jamildo: As 5 matérias mais lidas de hoje"
                 mensagem["From"] = f"Jamildo.com <{GMAIL_USER}>"
