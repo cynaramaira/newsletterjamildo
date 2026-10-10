@@ -29,7 +29,7 @@ jobs:
 
       - name: Instalar bibliotecas
         run: |
-          pip install requests beautifulsoup4 google-analytics-data
+          pip install requests beautifulsoup4 google-analytics-data gspread
 
       - name: Configurar credenciais do Google Analytics
         run: |
