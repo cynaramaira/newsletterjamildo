@@ -16,6 +16,11 @@ from google.analytics.data_v1beta.types import (
 )
 
 # 1. Configurações de ambiente e credenciais
+conteudo_credenciais = os.getenv("GA4_CREDENTIALS_JSON")
+if conteudo_credenciais:
+    with open("credenciais.json", "w", encoding="utf-8") as f:
+        f.write(conteudo_credenciais.strip())
+
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credenciais.json"
 GA4_PROPERTY_ID = os.getenv("GA4_PROPERTY_ID", "443865423")
 
@@ -35,24 +40,20 @@ def carregar_inscritos_google_sheets(nome_planilha="Inscritos Newsletter Jamildo
     try:
         gc = gspread.service_account(filename="credenciais.json")
         planilha = gc.open(nome_planilha).sheet1
-        
-        # Pega todos os valores da Coluna A (ignorando o cabeçalho 'email')
+
         valores_coluna_a = planilha.col_values(1)
         if len(valores_coluna_a) > 1:
             emails_brutos = valores_coluna_a[1:]
         else:
             emails_brutos = []
 
-        # Limpa e filtra apenas e-mails válidos
         inscritos = [e.strip() for e in emails_brutos if "@" in e and "." in e]
-        # Remove duplicados mantendo a ordem
         inscritos_unicos = list(dict.fromkeys(inscritos))
-        
+
         print(f"Base de leitores carregada: {len(inscritos_unicos)} inscrito(s) ativo(s).")
         return inscritos_unicos
     except Exception as e:
         print(f"Erro ao ler inscritos no Google Sheets: {e}")
-        # Fallback de segurança para não interromper totalmente caso haja falha de conexão na planilha
         return [GMAIL_USER]
 
 def consultar_mais_lidas_ga4():
@@ -100,7 +101,7 @@ def consultar_mais_lidas_ga4():
     return urls_identificadas
 
 def extrair_metadados_materia(url):
-    """Acessa a pagina da noticia e recupera foto de capa, resumo e titulo."""
+    """Acessa a página da notícia e recupera foto de capa, resumo e título."""
     registro = {
         "url": url,
         "titulo": "",
@@ -113,7 +114,6 @@ def extrair_metadados_materia(url):
         if resposta.status_code == 200:
             sopa = BeautifulSoup(resposta.text, "html.parser")
 
-            # Titulo
             tag_og_title = sopa.find("meta", property="og:title")
             if tag_og_title and tag_og_title.get("content"):
                 titulo_bruto = tag_og_title["content"]
@@ -128,7 +128,6 @@ def extrair_metadados_materia(url):
                 .strip()
             )
 
-            # Linha fina
             tag_og_desc = sopa.find("meta", property="og:description") or sopa.find("meta", attrs={"name": "description"})
             if tag_og_desc and tag_og_desc.get("content") and not tag_og_desc["content"].startswith("Listagem de"):
                 registro["linha_fina"] = tag_og_desc["content"].strip()
@@ -137,7 +136,6 @@ def extrair_metadados_materia(url):
                 if seletor_sub:
                     registro["linha_fina"] = seletor_sub.text.strip()
 
-            # Imagem de destaque
             tag_og_img = sopa.find("meta", property="og:image")
             if tag_og_img and tag_og_img.get("content"):
                 registro["imagem"] = tag_og_img["content"].strip()
@@ -155,7 +153,7 @@ def extrair_metadados_materia(url):
     return registro
 
 def construir_estrutura_html(noticias):
-    """Monta a peca da newsletter nas cores Azul (#024796) e Laranja (#f83d03)."""
+    """Monta o e-mail responsivo nas cores Azul (#024796) e Laranja (#f83d03)."""
     destaque = noticias[0]
     secundarias = noticias[1:]
 
@@ -274,7 +272,6 @@ def processar_envio():
 
     html_email = construir_estrutura_html(noticias)
 
-    # Carrega os inscritos diretamente do Google Sheets privado
     lista_inscritos = carregar_inscritos_google_sheets()
 
     if not lista_inscritos:
