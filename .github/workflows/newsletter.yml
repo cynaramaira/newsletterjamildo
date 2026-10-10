@@ -31,19 +31,12 @@ jobs:
         run: |
           pip install requests beautifulsoup4 google-analytics-data gspread
 
-      - name: Configurar credenciais do Google Analytics
-        env:
-          CREDS: ${{ secrets.GA4_CREDENTIALS_JSON }}
-        run: |
-          cat << 'EOF' > credenciais.json
-          $CREDS
-          EOF
-
       - name: Executar rotina de envio
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           GA4_PROPERTY_ID: ${{ secrets.GA4_PROPERTY_ID }}
+          GA4_CREDENTIALS_JSON: ${{ secrets.GA4_CREDENTIALS_JSON }}
           INPUT_MODO: ${{ github.event.inputs.modo }}
           INPUT_LINKS: ${{ github.event.inputs.links }}
         run: |
