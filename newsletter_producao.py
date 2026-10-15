@@ -24,8 +24,9 @@ if conteudo_credenciais:
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "credenciais.json"
 GA4_PROPERTY_ID = os.getenv("GA4_PROPERTY_ID", "443865423")
 
-GMAIL_USER = os.getenv("GMAIL_USER", "jamildo.com@gmail.com")
-GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "")
+BREVO_SMTP_LOGIN = os.getenv("BREVO_SMTP_LOGIN", "")
+BREVO_SMTP_KEY = os.getenv("BREVO_SMTP_KEY", "")
+EMAIL_REMETENTE = os.getenv("EMAIL_REMETENTE", "jamildo.com@gmail.com")
 
 HEADERS_REQUISICAO = {
     "User-Agent": (
@@ -54,7 +55,7 @@ def carregar_inscritos_google_sheets(nome_planilha="Inscritos Newsletter Jamildo
         return inscritos_unicos
     except Exception as e:
         print(f"Erro ao ler inscritos no Google Sheets: {e}")
-        return [GMAIL_USER]
+        return [EMAIL_REMETENTE]
 
 def consultar_mais_lidas_ga4():
     """Recupera os 5 artigos com maior volume de acessos hoje no GA4."""
@@ -278,25 +279,25 @@ def processar_envio():
         print("Nenhum inscrito encontrado na planilha. Abortando envio.")
         return
 
-    print(f"Iniciando conexao SMTP e envio para {len(lista_inscritos)} leitor(es)...")
+    print(f"Iniciando conexao SMTP (Brevo) e envio para {len(lista_inscritos)} leitor(es)...")
     try:
-        with smtplib.SMTP("smtp.gmail.com", 587, timeout=25) as servidor:
+        with smtplib.SMTP("smtp-relay.brevo.com", 587, timeout=25) as servidor:
             servidor.ehlo()
             servidor.starttls()
             servidor.ehlo()
-            servidor.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+            servidor.login(BREVO_SMTP_LOGIN, BREVO_SMTP_KEY)
 
             for email_leitor in lista_inscritos:
                 mensagem = MIMEMultipart("alternative")
                 mensagem["Subject"] = "Giro Jamildo: As 5 matérias mais lidas de hoje"
-                mensagem["From"] = f"Jamildo.com <{GMAIL_USER}>"
+                mensagem["From"] = f"Jamildo.com <{EMAIL_REMETENTE}>"
                 mensagem["To"] = email_leitor
                 mensagem.attach(MIMEText(html_email, "html"))
 
-                servidor.sendmail(GMAIL_USER, email_leitor, mensagem.as_string())
+                servidor.sendmail(EMAIL_REMETENTE, email_leitor, mensagem.as_string())
                 print(f"Envio concluido para: {email_leitor}")
 
-        print("Processo finalizado com sucesso.")
+        print("Processo finalizado com sucesso via Brevo.")
     except Exception as e:
         print(f"Erro na entrega de e-mails: {e}")
 
