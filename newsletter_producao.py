@@ -76,7 +76,7 @@ def carregar_inscritos_google_sheets(nome_planilha="Inscritos Newsletter Jamildo
         return [EMAIL_REMETENTE]
 
 def consultar_mais_lidas_ga4():
-    """Recupera os 5 artigos com maior volume de acessos hoje no GA4."""
+    """Recupera os 5 artigos com maior volume de acessos hoje no GA4, filtrando buscas e seções."""
     cliente = BetaAnalyticsDataClient()
     solicitacao = RunReportRequest(
         property=f"properties/{GA4_PROPERTY_ID}",
@@ -92,23 +92,37 @@ def consultar_mais_lidas_ga4():
                 desc=True,
             )
         ],
-        limit=30,
+        limit=40,
     )
 
     resposta = cliente.run_report(solicitacao)
     urls_identificadas = []
     caminhos_unicos = set()
 
-    rotas_excluidas = ["/", "/busca", "/quem-somos", "/contato", "/politica-de-privacidade"]
+    rotas_excluidas = [
+        "/",
+        "/busca",
+        "/search",
+        "/quem-somos",
+        "/contato",
+        "/politica-de-privacidade",
+        "/expediente",
+    ]
 
     for linha in resposta.rows:
         caminho = linha.dimension_values[1].value
-        if caminho in rotas_excluidas or len(caminho) <= 3:
-            continue
-        if caminho.startswith("/canal/") or "/categoria/" in caminho or caminho.startswith("/tag/"):
+        caminho_base = caminho.split("?")[0].split("#")[0].rstrip("/")
+
+        if caminho_base in rotas_excluidas or len(caminho_base) <= 3:
             continue
 
-        caminho_higienizado = caminho.replace("/amp/", "/")
+        if any(caminho.startswith(p) for p in ["/search", "/busca", "/canal/", "/tag/"]):
+            continue
+
+        if "/categoria/" in caminho or "gsc.tab" in caminho:
+            continue
+
+        caminho_higienizado = caminho_base.replace("/amp/", "/")
         if caminho_higienizado in caminhos_unicos:
             continue
         caminhos_unicos.add(caminho_higienizado)
