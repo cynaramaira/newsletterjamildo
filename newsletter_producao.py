@@ -52,7 +52,7 @@ def obter_titulo_newsletter():
     agora = datetime.now(fuso_brasilia)
     nome_dia = DIAS_SEMANA[agora.weekday()]
     data_formatada = agora.strftime("%d/%m")
-    return f"Giro Jamildo: As 5 mais lidas desta {nome_dia} ({data_formatada})"
+    return f"Giro Jamildo: Destaques desta {nome_dia} ({data_formatada})"
 
 def carregar_inscritos_google_sheets(nome_planilha="Inscritos Newsletter Jamildo"):
     """Lê a lista de e-mails da planilha privada compartilhada com a Conta de Serviço."""
@@ -69,123 +69,163 @@ def carregar_inscritos_google_sheets(nome_planilha="Inscritos Newsletter Jamildo
         inscritos = [e.strip() for e in emails_brutos if "@" in e and "." in e]
         inscritos_unicos = list(dict.fromkeys(inscritos))
 
-        print(f"Base de leitores carregada: {len(inscritos_unicos)} inscrito(s) ativo(s).")
+        print(f"Base de leitores: {len(inscritos_unicos)} inscrito(s) ativo(s).")
         return inscritos_unicos
     except Exception as e:
         print(f"Erro ao ler inscritos no Google Sheets: {e}")
         return [EMAIL_REMETENTE]
 
-def consultar_mais_lidas_ga4():
-    """Recupera os 5 artigos com maior volume de acessos hoje no GA4, filtrando buscas e seções."""
-    cliente = BetaAnalyticsDataClient()
-    solicitacao = RunReportRequest(
-        property=f"properties/{GA4_PROPERTY_ID}",
-        dimensions=[
-            Dimension(name="pageTitle"),
-            Dimension(name="pagePath"),
-        ],
-        metrics=[Metric(name="screenPageViews")],
-        date_ranges=[DateRange(start_date="today", end_date="today")],
-        order_bys=[
-            OrderBy(
-                metric=OrderBy.MetricOrderBy(metric_name="screenPageViews"),
-                desc=True,
-            )
-        ],
-        limit=40,
-    )
-
-    resposta = cliente.run_report(solicitacao)
-    urls_identificadas = []
-    caminhos_unicos = set()
-
-    rotas_excluidas = [
-        "/",
-        "/busca",
-        "/search",
-        "/quem-somos",
-        "/contato",
-        "/politica-de-privacidade",
-        "/expediente",
-    ]
-
-    for linha in resposta.rows:
-        caminho = linha.dimension_values[1].value
-        caminho_base = caminho.split("?")[0].split("#")[0].rstrip("/")
-
-        if caminho_base in rotas_excluidas or len(caminho_base) <= 3:
-            continue
-
-        if any(caminho.startswith(p) for p in ["/search", "/busca", "/canal/", "/tag/"]):
-            continue
-
-        if "/categoria/" in caminho or "gsc.tab" in caminho:
-            continue
-
-        caminho_higienizado = caminho_base.replace("/amp/", "/")
-        if caminho_higienizado in caminhos_unicos:
-            continue
-        caminhos_unicos.add(caminho_higienizado)
-
-        urls_identificadas.append(f"https://jamildo.com{caminho_higienizado}")
-        if len(urls_identificadas) == 5:
-            break
-
-    return urls_identificadas
-
-def extrair_metadados_materia(url):
-    """Acessa a página da notícia e recupera foto de capa, resumo e título."""
+def extrair_metadados_materia(url, limite_dias=1):
+    """
+    Acessa a matéria e verifica se foi publicada no prazo permitido.
+    limite_dias=1 garante que só entra matéria de hoje ou ontem (máx 24-36h).
+    """
     registro = {
         "url": url,
         "titulo": "",
         "linha_fina": "",
-        "imagem": ""
+        "imagem": "",
+        "data": None,
+        "valida": False
     }
 
     try:
-        resposta = requests.get(url, headers=HEADERS_REQUISICAO, timeout=12)
-        if resposta.status_code == 200:
-            sopa = BeautifulSoup(resposta.text, "html.parser")
+        resp = requests.get(url, headers=HEADERS_REQUISICAO, timeout=12)
+        if resp.status_code != 200:
+            return registro
 
-            tag_og_title = sopa.find("meta", property="og:title")
-            if tag_og_title and tag_og_title.get("content"):
-                titulo_bruto = tag_og_title["content"]
-            else:
-                tag_h1 = sopa.find("h1")
-                titulo_bruto = tag_h1.text.strip() if tag_h1 else ""
+        sopa = BeautifulSoup(resp.text, "html.parser")
 
-            registro["titulo"] = (
-                titulo_bruto.replace("Jamildo · ", "")
-                .replace(" - Jamildo", "")
-                .replace(" | Jamildo.com", "")
-                .strip()
-            )
+        # Título
+        tag_og_title = sopa.find("meta", property="og:title")
+        if tag_og_title and tag_og_title.get("content"):
+            titulo_bruto = tag_og_title["content"]
+        else:
+            tag_h1 = sopa.find("h1")
+            titulo_bruto = tag_h1.text.strip() if tag_h1 else ""
 
-            tag_og_desc = sopa.find("meta", property="og:description") or sopa.find("meta", attrs={"name": "description"})
-            if tag_og_desc and tag_og_desc.get("content") and not tag_og_desc["content"].startswith("Listagem de"):
-                registro["linha_fina"] = tag_og_desc["content"].strip()
-            else:
-                seletor_sub = sopa.select_one(".col-content p.lead, .subtitulo, .linha-fina")
-                if seletor_sub:
-                    registro["linha_fina"] = seletor_sub.text.strip()
+        titulo_limpo = (
+            titulo_bruto.replace("Jamildo · ", "")
+            .replace(" - Jamildo", "")
+            .replace(" | Jamildo.com", "")
+            .strip()
+        )
 
-            tag_og_img = sopa.find("meta", property="og:image")
-            if tag_og_img and tag_og_img.get("content"):
-                registro["imagem"] = tag_og_img["content"].strip()
-            else:
-                seletor_img = sopa.select_one(".col-content img, article img")
-                if seletor_img and seletor_img.get("src"):
-                    registro["imagem"] = seletor_img["src"].strip()
+        if not titulo_limpo or len(titulo_limpo) < 15:
+            return registro
+        if titulo_limpo.lower().startswith("busca:") or "pesquisa" in titulo_limpo.lower():
+            return registro
 
-            if registro["imagem"] and not registro["imagem"].startswith("http"):
-                registro["imagem"] = f"https://jamildo.com{registro['imagem']}"
+        registro["titulo"] = titulo_limpo
+
+        # Data de publicação
+        tag_data = (
+            sopa.find("meta", property="article:published_time")
+            or sopa.find("meta", attrs={"name": "pubdate"})
+            or sopa.find("meta", property="og:published_time")
+        )
+
+        fuso_brasilia = timezone(timedelta(hours=-3))
+        hoje = datetime.now(fuso_brasilia).date()
+
+        if tag_data and tag_data.get("content"):
+            texto_data = tag_data["content"][:10]
+            try:
+                data_materia = datetime.strptime(texto_data, "%Y-%m-%d").date()
+                registro["data"] = data_materia
+                diferenca = (hoje - data_materia).days
+                if diferenca > limite_dias:
+                    return registro
+            except Exception:
+                pass
+
+        # Linha fina
+        tag_og_desc = sopa.find("meta", property="og:description") or sopa.find("meta", attrs={"name": "description"})
+        if tag_og_desc and tag_og_desc.get("content") and not tag_og_desc["content"].startswith("Listagem de"):
+            registro["linha_fina"] = tag_og_desc["content"].strip()
+        else:
+            seletor_sub = sopa.select_one(".col-content p.lead, .subtitulo, .linha-fina")
+            if seletor_sub:
+                registro["linha_fina"] = seletor_sub.text.strip()
+
+        # Imagem
+        tag_og_img = sopa.find("meta", property="og:image")
+        if tag_og_img and tag_og_img.get("content"):
+            registro["imagem"] = tag_og_img["content"].strip()
+        else:
+            seletor_img = sopa.select_one(".col-content img, article img")
+            if seletor_img and seletor_img.get("src"):
+                registro["imagem"] = seletor_img["src"].strip()
+
+        if registro["imagem"] and not registro["imagem"].startswith("http"):
+            registro["imagem"] = f"https://jamildo.com{registro['imagem']}"
+
+        registro["valida"] = True
 
     except Exception as erro:
-        print(f"Erro ao extrair metadados de {url}: {erro}")
+        print(f"Erro em {url}: {erro}")
 
     return registro
 
-def construir_estrutura_html(noticias):
+def obter_ultimas_noticias_portal():
+    """Busca as notícias recém-publicadas diretamente na capa e no canal de últimas."""
+    urls = []
+    fontes = [
+        "https://jamildo.com/canal/ultimas-noticias",
+        "https://jamildo.com/"
+    ]
+
+    for fonte in fontes:
+        try:
+            resp = requests.get(fonte, headers=HEADERS_REQUISICAO, timeout=12)
+            if resp.status_code == 200:
+                sopa = BeautifulSoup(resp.text, "html.parser")
+                for link in sopa.find_all("a", href=True):
+                    href = link["href"].strip()
+                    if href.endswith(".html") and not any(p in href for p in ["/canal/", "/categoria/", "/tags/", "/tag/"]):
+                        url_comp = href if href.startswith("http") else f"https://jamildo.com{href}"
+                        if url_comp not in urls:
+                            urls.append(url_comp)
+        except Exception as e:
+            print(f"Erro ao ler {fonte}: {e}")
+
+    return urls
+
+def consultar_mais_lidas_ga4():
+    """Consulta os acessos de hoje no GA4."""
+    try:
+        cliente = BetaAnalyticsDataClient()
+        solicitacao = RunReportRequest(
+            property=f"properties/{GA4_PROPERTY_ID}",
+            dimensions=[Dimension(name="pagePath")],
+            metrics=[Metric(name="screenPageViews")],
+            date_ranges=[DateRange(start_date="today", end_date="today")],
+            order_bys=[OrderBy(metric=OrderBy.MetricOrderBy(metric_name="screenPageViews"), desc=True)],
+            limit=50,
+        )
+        resposta = cliente.run_report(solicitacao)
+    except Exception as e:
+        print(f"Aviso no GA4: {e}. Passando para o feed.")
+        return []
+
+    candidatas = []
+    bloqueios = ["/busca", "/search", "/tags/", "/tag/", "/categoria/", "/canal/", "gsc.tab", "?q="]
+
+    for linha in resposta.rows:
+        caminho = linha.dimension_values[0].value.strip()
+        caminho_base = caminho.split("?")[0].split("#")[0].rstrip("/")
+
+        if len(caminho_base) <= 3 or any(b in caminho.lower() for b in bloqueios):
+            continue
+
+        caminho_limpo = caminho_base.replace("/amp/", "/")
+        url = f"https://jamildo.com{caminho_limpo}"
+        if url not in candidatas:
+            candidatas.append(url)
+
+    return candidatas
+
+def construir_estrutura_html(noticias, origem_texto):
     """Monta o e-mail responsivo nas cores Azul (#024796) e Laranja (#f83d03)."""
     destaque = noticias[0]
     secundarias = noticias[1:]
@@ -207,7 +247,7 @@ def construir_estrutura_html(noticias):
             <tr>
                 {html_foto}
                 <td valign="top">
-                    <span style="font-size: 11px; font-weight: bold; color: #f83d03; text-transform: uppercase;">Top {idx} do dia</span>
+                    <span style="font-size: 11px; font-weight: bold; color: #f83d03; text-transform: uppercase;">Top {idx} &bull; {item['origem_label']}</span>
                     <h3 style="margin: 4px 0 6px 0; font-size: 16px; line-height: 1.35;">
                         <a href="{item['url']}" target="_blank" style="color: #024796; text-decoration: none; font-weight: bold;">
                             {item['titulo']}
@@ -243,7 +283,7 @@ def construir_estrutura_html(noticias):
         </tr>
         <tr>
             <td style="background-color: #f83d03; padding: 6px 20px; text-align: center; color: #ffffff; font-size: 12px; font-weight: bold; letter-spacing: 0.5px;">
-                GIRO DIÁRIO &bull; AS 5 NOTÍCIAS MAIS LIDAS
+                {origem_texto.upper()}
             </td>
         </tr>
         <tr>
@@ -251,7 +291,7 @@ def construir_estrutura_html(noticias):
                 <div style="border: 2px solid #024796; border-radius: 6px; padding: 16px; margin-bottom: 26px; background-color: #ffffff;">
                     {foto_capa}
                     <span style="background-color: #f83d03; color: #ffffff; padding: 3px 8px; font-size: 11px; font-weight: bold; border-radius: 3px; text-transform: uppercase;">
-                        #1 Mais Lida do Dia
+                        #1 Destaque &bull; {destaque['origem_label']}
                     </span>
                     <h2 style="margin: 10px 0 8px 0; font-size: 19px; line-height: 1.3;">
                         <a href="{destaque['url']}" target="_blank" style="color: #024796; text-decoration: none; font-weight: bold;">
@@ -289,31 +329,74 @@ def processar_envio():
     modo = os.getenv("INPUT_MODO", "auto")
     links_informados = os.getenv("INPUT_LINKS", "")
 
-    if modo == "manual" and links_informados:
-        print("Acionamento em Modo Manual detectado.")
-        urls_alvo = [u.strip() for u in links_informados.split(",") if u.strip()][:5]
-    else:
-        print("Acionamento em Modo Automático detectado (GA4).")
-        urls_alvo = consultar_mais_lidas_ga4()
+    noticias_finais = []
+    urls_usadas = set()
 
-    if len(urls_alvo) < 5:
-        print(f"Quantidade insuficiente de links ({len(urls_alvo)} encontrados). Abortando.")
+    if modo == "manual" and links_informados:
+        print("Modo Manual: processando links fornecidos via disparador.")
+        urls_alvo = [u.strip() for u in links_informados.split(",") if u.strip()][:5]
+        for url in urls_alvo:
+            materia = extrair_metadados_materia(url, limite_dias=30)
+            if materia["titulo"]:
+                materia["origem_label"] = "Seleção Manual"
+                noticias_finais.append(materia)
+                urls_usadas.add(materia["url"])
+        faixa_email = "Giro Diário · Seleção da Redação"
+    else:
+        print("Modo Automático: buscando do GA4 com trava de frescor...")
+        candidatas_ga4 = consultar_mais_lidas_ga4()
+
+        for url in candidatas_ga4:
+            materia = extrair_metadados_materia(url, limite_dias=1)
+            if materia["valida"] and url not in urls_usadas:
+                materia["origem_label"] = "Mais Lida"
+                noticias_finais.append(materia)
+                urls_usadas.add(url)
+                print(f"GA4 -> {materia['titulo']}")
+            if len(noticias_finais) == 5:
+                break
+
+        total_ga4 = len(noticias_finais)
+
+        if len(noticias_finais) < 5:
+            faltam = 5 - len(noticias_finais)
+            print(f"GA4 forneceu {total_ga4} matérias de hoje. Completando {faltam} do Feed do portal...")
+            urls_feed = obter_ultimas_noticias_portal()
+
+            for url in urls_feed:
+                if url in urls_usadas:
+                    continue
+                materia = extrair_metadados_materia(url, limite_dias=1)
+                if materia["valida"]:
+                    materia["origem_label"] = "Últimas Notícias"
+                    noticias_finais.append(materia)
+                    urls_usadas.add(url)
+                    print(f"Feed -> {materia['titulo']}")
+                if len(noticias_finais) == 5:
+                    break
+
+        if total_ga4 >= 5:
+            faixa_email = "Giro Diário · As 5 Notícias Mais Lidas"
+        elif total_ga4 > 0:
+            faixa_email = "Giro Diário · Mais Lidas e Destaques de Hoje"
+        else:
+            faixa_email = "Giro Diário · As Principais Notícias de Hoje"
+
+    if len(noticias_finais) < 5:
+        print(f"Quantidade insuficiente ({len(noticias_finais)} notícias válidas). Abortando.")
         return
 
-    print("Raspando metadados das matérias selecionadas...")
-    noticias = [extrair_metadados_materia(u) for u in urls_alvo]
-
-    html_email = construir_estrutura_html(noticias)
+    html_email = construir_estrutura_html(noticias_finais, faixa_email)
     assunto_email = obter_titulo_newsletter()
 
     lista_inscritos = carregar_inscritos_google_sheets()
 
     if not lista_inscritos:
-        print("Nenhum inscrito encontrado na planilha. Abortando envio.")
+        print("Nenhum inscrito na planilha. Abortando.")
         return
 
     total_inscritos = len(lista_inscritos)
-    print(f"Iniciando conexao SMTP (Brevo) e envio para {total_inscritos} leitor(es)...")
+    print(f"Disparando newsletter para {total_inscritos} assinante(s)...")
     try:
         with smtplib.SMTP("smtp-relay.brevo.com", 587, timeout=25) as servidor:
             servidor.ehlo()
@@ -331,9 +414,9 @@ def processar_envio():
                 servidor.sendmail(EMAIL_REMETENTE, email_leitor, mensagem.as_string())
                 print(f"[{idx}/{total_inscritos}] Mensagem enviada com sucesso.")
 
-        print("Processo finalizado com sucesso via Brevo.")
+        print("Ciclo finalizado com sucesso via Brevo.")
     except Exception as e:
-        print(f"Erro na entrega de e-mails: {e}")
+        print(f"Erro no envio SMTP: {e}")
 
 if __name__ == "__main__":
     processar_envio()
