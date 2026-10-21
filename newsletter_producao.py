@@ -75,10 +75,10 @@ def carregar_inscritos_google_sheets(nome_planilha="Inscritos Newsletter Jamildo
         print(f"Erro ao ler inscritos no Google Sheets: {e}")
         return [EMAIL_REMETENTE]
 
-def extrair_metadados_materia(url, limite_dias=1):
+def extrair_metadados_materia(url, limite_dias=0):
     """
-    Acessa a matéria e verifica se foi publicada no prazo permitido.
-    limite_dias=1 garante que só entra matéria de hoje ou ontem (máx 24-36h).
+    Acessa a matéria e verifica se foi publicada estritamente no prazo permitido.
+    limite_dias=0 exige publicação na data exata de hoje.
     """
     registro = {
         "url": url,
@@ -96,7 +96,7 @@ def extrair_metadados_materia(url, limite_dias=1):
 
         sopa = BeautifulSoup(resp.text, "html.parser")
 
-        # Título
+        # 1. Título
         tag_og_title = sopa.find("meta", property="og:title")
         if tag_og_title and tag_og_title.get("content"):
             titulo_bruto = tag_og_title["content"]
@@ -118,7 +118,7 @@ def extrair_metadados_materia(url, limite_dias=1):
 
         registro["titulo"] = titulo_limpo
 
-        # Data de publicação
+        # 2. Data de publicação (Trava estrita: apenas hoje por padrão)
         tag_data = (
             sopa.find("meta", property="article:published_time")
             or sopa.find("meta", attrs={"name": "pubdate"})
@@ -139,7 +139,7 @@ def extrair_metadados_materia(url, limite_dias=1):
             except Exception:
                 pass
 
-        # Linha fina
+        # 3. Linha fina
         tag_og_desc = sopa.find("meta", property="og:description") or sopa.find("meta", attrs={"name": "description"})
         if tag_og_desc and tag_og_desc.get("content") and not tag_og_desc["content"].startswith("Listagem de"):
             registro["linha_fina"] = tag_og_desc["content"].strip()
@@ -148,7 +148,7 @@ def extrair_metadados_materia(url, limite_dias=1):
             if seletor_sub:
                 registro["linha_fina"] = seletor_sub.text.strip()
 
-        # Imagem
+        # 4. Imagem
         tag_og_img = sopa.find("meta", property="og:image")
         if tag_og_img and tag_og_img.get("content"):
             registro["imagem"] = tag_og_img["content"].strip()
@@ -163,7 +163,7 @@ def extrair_metadados_materia(url, limite_dias=1):
         registro["valida"] = True
 
     except Exception as erro:
-        print(f"Erro em {url}: {erro}")
+        print(f"Erro ao processar {url}: {erro}")
 
     return registro
 
@@ -205,7 +205,7 @@ def consultar_mais_lidas_ga4():
         )
         resposta = cliente.run_report(solicitacao)
     except Exception as e:
-        print(f"Aviso no GA4: {e}. Passando para o feed.")
+        print(f"Aviso no GA4: {e}. Passando para o feed do portal.")
         return []
 
     candidatas = []
@@ -343,11 +343,11 @@ def processar_envio():
                 urls_usadas.add(materia["url"])
         faixa_email = "Giro Diário · Seleção da Redação"
     else:
-        print("Modo Automático: buscando do GA4 com trava de frescor...")
+        print("Modo Automático: buscando do GA4 com trava estrita de frescor (apenas hoje)...")
         candidatas_ga4 = consultar_mais_lidas_ga4()
 
         for url in candidatas_ga4:
-            materia = extrair_metadados_materia(url, limite_dias=1)
+            materia = extrair_metadados_materia(url, limite_dias=0)
             if materia["valida"] and url not in urls_usadas:
                 materia["origem_label"] = "Mais Lida"
                 noticias_finais.append(materia)
@@ -358,6 +358,7 @@ def processar_envio():
 
         total_ga4 = len(noticias_finais)
 
+        # Se o GA4 tiver menos de 5 por conta de delay, completa com as últimas publicadas hoje
         if len(noticias_finais) < 5:
             faltam = 5 - len(noticias_finais)
             print(f"GA4 forneceu {total_ga4} matérias de hoje. Completando {faltam} do Feed do portal...")
@@ -366,7 +367,7 @@ def processar_envio():
             for url in urls_feed:
                 if url in urls_usadas:
                     continue
-                materia = extrair_metadados_materia(url, limite_dias=1)
+                materia = extrair_metadados_materia(url, limite_dias=0)
                 if materia["valida"]:
                     materia["origem_label"] = "Últimas Notícias"
                     noticias_finais.append(materia)
@@ -383,7 +384,7 @@ def processar_envio():
             faixa_email = "Giro Diário · As Principais Notícias de Hoje"
 
     if len(noticias_finais) < 5:
-        print(f"Quantidade insuficiente ({len(noticias_finais)} notícias válidas). Abortando.")
+        print(f"Quantidade insuficiente ({len(noticias_finais)} notícias de hoje). Abortando.")
         return
 
     html_email = construir_estrutura_html(noticias_finais, faixa_email)
