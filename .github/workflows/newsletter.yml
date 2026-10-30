@@ -35,7 +35,7 @@ jobs:
         env:
           BREVO_SMTP_LOGIN: ${{ secrets.BREVO_SMTP_LOGIN }}
           BREVO_SMTP_KEY: ${{ secrets.BREVO_SMTP_KEY }}
-          EMAIL_REMETENTE: "jamildo.com@gmail.com"
+          EMAIL_REMETENTE: "contato@jamildo.com"
           GA4_PROPERTY_ID: ${{ secrets.GA4_PROPERTY_ID }}
           GA4_CREDENTIALS_JSON: ${{ secrets.GA4_CREDENTIALS_JSON }}
           INPUT_MODO: ${{ github.event.inputs.modo }}
