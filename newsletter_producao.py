@@ -26,7 +26,7 @@ GA4_PROPERTY_ID = os.getenv("GA4_PROPERTY_ID", "443865423")
 
 BREVO_SMTP_LOGIN = os.getenv("BREVO_SMTP_LOGIN", "")
 BREVO_SMTP_KEY = os.getenv("BREVO_SMTP_KEY", "")
-EMAIL_REMETENTE = os.getenv("EMAIL_REMETENTE", "jamildo.com@gmail.com")
+EMAIL_REMETENTE = os.getenv("EMAIL_REMETENTE", "contato@jamildo.com")
 
 HEADERS_REQUISICAO = {
     "User-Agent": (
@@ -410,6 +410,7 @@ def processar_envio():
                 mensagem["Subject"] = assunto_email
                 mensagem["From"] = f"Jamildo.com <{EMAIL_REMETENTE}>"
                 mensagem["To"] = email_leitor
+                mensagem["Reply-To"] = "jamildo.com@gmail.com"
                 mensagem.attach(MIMEText(html_email, "html"))
 
                 servidor.sendmail(EMAIL_REMETENTE, email_leitor, mensagem.as_string())
