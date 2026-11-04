@@ -46,6 +46,11 @@ DIAS_SEMANA = {
     6: "domingo",
 }
 
+def aplicar_utm(url):
+    """Adiciona os parâmetros de rastreamento para alimentar o GA4 e o News Consumer Insights."""
+    separador = "&" if "?" in url else "?"
+    return f"{url}{separador}utm_source=newsletter&utm_medium=email&utm_campaign=giro_jamildo"
+
 def obter_titulo_newsletter():
     """Gera o assunto dinâmico com dia da semana e data no horário de Brasília."""
     fuso_brasilia = timezone(timedelta(hours=-3))
@@ -230,13 +235,16 @@ def construir_estrutura_html(noticias, origem_texto):
     destaque = noticias[0]
     secundarias = noticias[1:]
 
+    url_destaque_utm = aplicar_utm(destaque["url"])
+
     blocos_secundarios = ""
     for idx, item in enumerate(secundarias, start=2):
+        url_secundaria_utm = aplicar_utm(item["url"])
         html_foto = ""
         if item["imagem"]:
             html_foto = f"""
             <td width="130" valign="top" style="padding-right: 15px;">
-                <a href="{item['url']}" target="_blank">
+                <a href="{url_secundaria_utm}" target="_blank">
                     <img src="{item['imagem']}" alt="{item['titulo']}" width="130" style="width: 100%; max-width: 130px; height: auto; border-radius: 4px; display: block;">
                 </a>
             </td>
@@ -249,7 +257,7 @@ def construir_estrutura_html(noticias, origem_texto):
                 <td valign="top">
                     <span style="font-size: 11px; font-weight: bold; color: #f83d03; text-transform: uppercase;">Top {idx} &bull; {item['origem_label']}</span>
                     <h3 style="margin: 4px 0 6px 0; font-size: 16px; line-height: 1.35;">
-                        <a href="{item['url']}" target="_blank" style="color: #024796; text-decoration: none; font-weight: bold;">
+                        <a href="{url_secundaria_utm}" target="_blank" style="color: #024796; text-decoration: none; font-weight: bold;">
                             {item['titulo']}
                         </a>
                     </h3>
@@ -265,7 +273,7 @@ def construir_estrutura_html(noticias, origem_texto):
     if destaque["imagem"]:
         foto_capa = f"""
         <div style="margin-bottom: 14px;">
-            <a href="{destaque['url']}" target="_blank">
+            <a href="{url_destaque_utm}" target="_blank">
                 <img src="{destaque['imagem']}" alt="{destaque['titulo']}" width="552" style="width: 100%; max-width: 552px; height: auto; border-radius: 6px; display: block;">
             </a>
         </div>
@@ -294,14 +302,14 @@ def construir_estrutura_html(noticias, origem_texto):
                         #1 Destaque &bull; {destaque['origem_label']}
                     </span>
                     <h2 style="margin: 10px 0 8px 0; font-size: 19px; line-height: 1.3;">
-                        <a href="{destaque['url']}" target="_blank" style="color: #024796; text-decoration: none; font-weight: bold;">
+                        <a href="{url_destaque_utm}" target="_blank" style="color: #024796; text-decoration: none; font-weight: bold;">
                             {destaque['titulo']}
                         </a>
                     </h2>
                     <p style="margin: 0 0 14px 0; font-size: 14px; line-height: 1.45; color: #444444;">
                         {destaque['linha_fina']}
                     </p>
-                    <a href="{destaque['url']}" target="_blank" style="display: inline-block; background-color: #024796; color: #ffffff; padding: 9px 16px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 13px;">
+                    <a href="{url_destaque_utm}" target="_blank" style="display: inline-block; background-color: #024796; color: #ffffff; padding: 9px 16px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 13px;">
                         Acessar reportagem completa &rarr;
                     </a>
                 </div>
@@ -311,6 +319,16 @@ def construir_estrutura_html(noticias, origem_texto):
                 </h4>
 
                 {blocos_secundarios}
+
+                <!-- Bloco de engajamento no Google -->
+                <div style="background-color: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px; text-align: center; margin-top: 15px; margin-bottom: 10px;">
+                    <p style="margin: 0 0 10px 0; font-size: 13px; color: #333333; line-height: 1.4;">
+                        Acompanhe nossos bastidores políticos e apurações exclusivas também no Google:
+                    </p>
+                    <a href="https://profile.google/@blogdejamildo" target="_blank" style="display: inline-block; background-color: #024796; color: #ffffff; padding: 9px 20px; border-radius: 20px; text-decoration: none; font-weight: bold; font-size: 12px; border: 1px solid #013774;">
+                        Seguir o Blog de Jamildo no Google &rarr;
+                    </a>
+                </div>
             </td>
         </tr>
         <tr>
