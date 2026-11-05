@@ -60,21 +60,35 @@ def obter_titulo_newsletter():
     return f"Giro Jamildo: Destaques desta {nome_dia} ({data_formatada})"
 
 def carregar_inscritos_google_sheets(nome_planilha="Inscritos Newsletter Jamildo"):
-    """Lê a lista de e-mails da planilha privada compartilhada com a Conta de Serviço."""
+    """
+    Lê e consolida os e-mails da Página1 (Reader Revenue - Col A) 
+    e da aba do Forms (Respostas ao formulário 2 - Col B).
+    Mantém privacidade total: nenhum endereço é impresso nos logs.
+    """
     try:
         gc = gspread.service_account(filename="credenciais.json")
-        planilha = gc.open(nome_planilha).sheet1
+        arquivo = gc.open(nome_planilha)
 
-        valores_coluna_a = planilha.col_values(1)
-        if len(valores_coluna_a) > 1:
-            emails_brutos = valores_coluna_a[1:]
-        else:
-            emails_brutos = []
+        # 1. Base principal do Reader Revenue (Coluna A)
+        aba_rrm = arquivo.worksheet("Página1")
+        valores_rrm = aba_rrm.col_values(1)
+        emails_rrm = valores_rrm[1:] if len(valores_rrm) > 1 else []
 
-        inscritos = [e.strip() for e in emails_brutos if "@" in e and "." in e]
+        # 2. Base do formulário das redes sociais (Coluna B)
+        emails_forms = []
+        try:
+            aba_forms = arquivo.worksheet("Respostas ao formulário 2")
+            valores_forms = aba_forms.col_values(2)  # Coluna B: Endereço de e-mail
+            emails_forms = valores_forms[1:] if len(valores_forms) > 1 else []
+        except Exception:
+            pass
+
+        # Consolida listas, valida formato básico e remove duplicatas
+        todos_emails = emails_rrm + emails_forms
+        inscritos = [e.strip() for e in todos_emails if "@" in e and "." in e]
         inscritos_unicos = list(dict.fromkeys(inscritos))
 
-        print(f"Base de leitores: {len(inscritos_unicos)} inscrito(s) ativo(s).")
+        print(f"Base de leitores carregada: {len(inscritos_unicos)} inscrito(s) ativo(s).")
         return inscritos_unicos
     except Exception as e:
         print(f"Erro ao ler inscritos no Google Sheets: {e}")
