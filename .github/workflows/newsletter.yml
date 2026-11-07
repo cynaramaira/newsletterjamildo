@@ -1,44 +1,42 @@
 name: Disparo da Newsletter Jamildo
 
 on:
-  schedule:
-    # Disparo programado de segunda a sexta às 18h de Brasília (21h UTC)
-    - cron: '0 21 * * 1-5'
   workflow_dispatch:
     inputs:
       modo:
-        description: 'Modo de selecao (auto ou manual)'
+        description: 'Modo de seleção (auto ou manual)'
         required: true
         default: 'auto'
       links:
-        description: 'Lista de links separados por virgula'
+        description: 'Links manuais (separados por vírgula)'
         required: false
         default: ''
 
 jobs:
-  executar-newsletter:
+  enviar_newsletter:
     runs-on: ubuntu-latest
     steps:
-      - name: Baixar codigo do repositorio
-        uses: actions/checkout@v3
+      - name: Baixar código
+        uses: actions/checkout@v4
 
-      - name: Configurar ambiente Python
-        uses: actions/setup-python@v4
+      - name: Configurar Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
-      - name: Instalar bibliotecas
+      - name: Instalar dependências
         run: |
-          pip install requests beautifulsoup4 google-analytics-data gspread
+          pip install --upgrade pip
+          pip install requests beautifulsoup4 gspread google-analytics-data
 
-      - name: Executar rotina de envio
+      - name: Executar rotina da newsletter
         env:
+          GA4_CREDENTIALS_JSON: ${{ secrets.GA4_CREDENTIALS_JSON }}
+          GA4_PROPERTY_ID: ${{ secrets.GA4_PROPERTY_ID }}
           BREVO_SMTP_LOGIN: ${{ secrets.BREVO_SMTP_LOGIN }}
           BREVO_SMTP_KEY: ${{ secrets.BREVO_SMTP_KEY }}
-          EMAIL_REMETENTE: "contato@jamildo.com"
-          GA4_PROPERTY_ID: ${{ secrets.GA4_PROPERTY_ID }}
-          GA4_CREDENTIALS_JSON: ${{ secrets.GA4_CREDENTIALS_JSON }}
-          INPUT_MODO: ${{ github.event.inputs.modo }}
-          INPUT_LINKS: ${{ github.event.inputs.links }}
-        run: |
-          python newsletter_producao.py
+          EMAIL_REMETENTE: ${{ secrets.EMAIL_REMETENTE }}
+          INPUT_MODO: ${{ github.event.inputs.modo || 'auto' }}
+          INPUT_LINKS: ${{ github.event.inputs.links || '' }}
+        run: python newsletter_producao.py
