@@ -35,7 +35,7 @@ jobs:
           GA4_PROPERTY_ID: ${{ secrets.GA4_PROPERTY_ID }}
           BREVO_SMTP_LOGIN: ${{ secrets.BREVO_SMTP_LOGIN }}
           BREVO_SMTP_KEY: ${{ secrets.BREVO_SMTP_KEY }}
-          EMAIL_REMETENTE: ${{ secrets.EMAIL_REMETENTE }}
+          EMAIL_REMETENTE: "contato@jamildo.com"
           INPUT_MODO: ${{ github.event.inputs.modo || 'auto' }}
           INPUT_LINKS: ${{ github.event.inputs.links || '' }}
         run: python newsletter_producao.py
